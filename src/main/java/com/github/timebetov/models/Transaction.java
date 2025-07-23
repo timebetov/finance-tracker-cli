@@ -1,0 +1,65 @@
+package com.github.timebetov.models;
+
+import com.github.timebetov.helper.AppConstant;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Objects;
+import java.util.UUID;
+
+@Getter @Setter
+public class Transaction implements Comparable<Transaction> {
+
+    public enum TransactionType { INCOME, EXPENSE };
+    public enum Category { FOOD, SALARY, RENT, TRANSPORT, ENTERTAINMENT, OTHER };
+
+    private UUID id;
+    private TransactionType type;
+    private Category category;
+    private BigDecimal amount;
+    private String description;
+    private Instant transactionTime;
+
+    public Transaction(TransactionType type, Category category, BigDecimal amount, String description, Instant transactionTime) {
+        this.id = UUID.randomUUID();
+        this.type = type;
+        this.category = category;
+        this.amount = amount.setScale(2, RoundingMode.HALF_UP);
+        this.description = description;
+        this.transactionTime = transactionTime;
+    }
+
+    @Override
+    public int compareTo(Transaction o) {
+        return transactionTime.compareTo(o.transactionTime);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof Transaction that)) return false;
+        return Objects.equals(getId(), that.getId());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(getId());
+    }
+
+    @Override
+    public String toString() {
+        return String.format(
+                "| %-36s | %-7s | %10s | %-13s | %-20s | %s |",
+                id,
+                type,
+                amount,
+                category,
+                description,
+                LocalDateTime.ofInstant(transactionTime, ZoneId.systemDefault()).format(AppConstant.TIME_FORMAT)
+        );
+    }
+}
