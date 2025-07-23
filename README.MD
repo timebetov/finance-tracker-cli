@@ -18,7 +18,7 @@ Built with **pure Java** and **Maven**.
 
 ```bash
 git clone https://github.com/timebetov/finance-tracker-cli.git
-cd moneywise
+cd finance-tracker-cli
 mvn clean package
 java -jar target/moneywise.jar
 ```
