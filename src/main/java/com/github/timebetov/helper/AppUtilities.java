@@ -6,12 +6,13 @@ public class AppUtilities {
 
     private AppUtilities() {}
 
-    protected static String getInput(Scanner scanner, String promptMsg) {
+    protected static String getInput(Scanner scanner, String promptMsg, boolean allowBlank) {
 
-        System.out.print(promptMsg + " >>> ");
+        final String postFixMsgIfAllowed = " (or leave the field blank)";
+        System.out.print(promptMsg + (allowBlank ? postFixMsgIfAllowed : "") + " >>> ");
         String input = scanner.nextLine().trim();
-        if (input.isBlank()) {
-            input = getInput(scanner, promptMsg);
+        if (!allowBlank && input.isBlank()) {
+            input = getInput(scanner, promptMsg, false);
         }
         return input;
     }

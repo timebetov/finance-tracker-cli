@@ -16,12 +16,17 @@ public class InMemoryTransactionService implements TransactionService {
     @Override
     public void add(Transaction transaction) {
 
+        if (transactions.containsKey(transaction.getId())) {
+            throw new IllegalArgumentException("Transaction with ID: " + transaction.getId() + " already exists");
+        }
         transactions.put(transaction.getId(), transaction);
     }
 
     @Override
     public List<Transaction> getTransactions() {
-        return transactions.values().stream().toList();
+        return transactions.values().stream()
+                .sorted()
+                .toList();
     }
 
     @Override
@@ -34,12 +39,32 @@ public class InMemoryTransactionService implements TransactionService {
     }
 
     @Override
+    public void update(String transactionId, Transaction transaction) {
+
+        Transaction toUpdate = getById(transactionId);
+
+        if (transaction.getType() != null)
+            toUpdate.setType(transaction.getType());
+        if (transaction.getCategory() != null)
+            toUpdate.setCategory(transaction.getCategory());
+        if (transaction.getDescription() != null && !(transaction.getDescription().isBlank()))
+            toUpdate.setDescription(transaction.getDescription());
+        if (transaction.getAmount() != null)
+            toUpdate.setAmount(transaction.getAmount());
+        if (transaction.getTransactionTime() != null)
+            toUpdate.setTransactionTime(transaction.getTransactionTime());
+    }
+
+    @Override
     public void delete(String transactionId) {
         transactions.remove(UUID.fromString(transactionId));
     }
 
     @Override
     public Transaction getById(String transactionId) {
+
+        if (!transactions.containsKey(UUID.fromString(transactionId)))
+            throw new IllegalArgumentException("Transaction with ID: " + transactionId + " does not exists");
         return transactions.get(UUID.fromString(transactionId));
     }
 

@@ -11,6 +11,7 @@ public interface TransactionService {
     void add(Transaction transaction);
     List<Transaction> getTransactions();
     BigDecimal getBalance();
+    void update(String transactionId, Transaction transaction);
     void delete(String transactionId);
     Transaction getById(String transactionId);
     Map<String, String> getSummary();

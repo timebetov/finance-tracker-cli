@@ -22,6 +22,7 @@ public class AppRunner {
     private final List<String> menuItems = List.of(
             "ADD | Add a new transaction",
             "SHOW | Show all transactions",
+            "UPDATE | Update transaction by ID",
             "DELETE | Delete transaction by ID",
             "BALANCE | View current Balance",
             "SUMMARY | Get full summary report",
@@ -37,7 +38,7 @@ public class AppRunner {
         greeting();
         showMenu();
         while(true) {
-            String input = AppUtilities.getInput(scanner, "Please choose a command or type 'menu' to show menu");
+            String input = AppUtilities.getInput(scanner, "Please choose a command or type 'menu' to show menu", false);
             if (input.equalsIgnoreCase("EXIT")) return;
             action(input);
         }
@@ -47,6 +48,7 @@ public class AppRunner {
         switch (input.toUpperCase()) {
             case "ADD" -> addTransaction();
             case "SHOW" -> showTransactions();
+            case "UPDATE" -> updateTransaction();
             case "DELETE" -> deleteTransaction();
             case "SUMMARY" -> showTransactionSummary();
             case "BALANCE" -> getBalance();
@@ -55,28 +57,41 @@ public class AppRunner {
         }
     }
 
-    private void addTransaction() {
+    private Transaction getTransactionDetails(boolean allowBlank) {
 
         var types = Arrays.toString(Transaction.TransactionType.values());
         var categories = Arrays.toString(Transaction.Category.values());
 
-        String type = getInput(scanner, "Please provide type of transaction " + types);
-        String category = getInput(scanner, "Please provide category of transaction " + categories);
-        String amount = getInput(scanner, "Please provide amount of transaction");
-        String description = getInput(scanner, "Please provide description of transaction");
+        String type = getInput(scanner, "Please provide type of transaction " + types, allowBlank);
+        String category = getInput(scanner, "Please provide category of transaction " + categories, allowBlank);
+        String amount = getInput(scanner, "Please provide amount of transaction", allowBlank);
+        String description = getInput(scanner, "Please provide description of transaction", allowBlank);
+        String time = getInput(scanner, "Please provide transaction time in format: " +
+                LocalDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()).format(AppConstant.TIME_FORMAT), allowBlank);
 
         try {
             var validType = TransactionValidator.isValidType(type);
             var validCat = TransactionValidator.isValidCategory(category);
             var validAmount = TransactionValidator.isValidAmount(amount);
+            var validTime = TransactionValidator.isValidTime(time);
 
-            Transaction transaction = new Transaction(validType, validCat, validAmount, description, Instant.now());
-            service.add(transaction);
-            showResponse("Transaction added successfully");
+            return new Transaction(validType, validCat, validAmount, description, validTime);
         } catch (RuntimeException ex) {
             showResponse(ex.getMessage());
+            return null;
+        }
+    }
+
+    private void addTransaction() {
+
+        Transaction transaction = getTransactionDetails(false);
+        if (transaction == null) {
+            showResponse("Transaction NOT ADDED");
+            return;
         }
 
+        service.add(transaction);
+        showResponse("Transaction added successfully");
     }
 
     private void showTransactions() {
@@ -103,9 +118,25 @@ public class AppRunner {
         System.out.println("‒".repeat(135));
     }
 
+    private void updateTransaction() {
+
+        String transactionId = getInput(scanner, "Please provide transaction id you want to update", true);
+        if (transactionId.isBlank()) return;
+
+        Transaction transaction = getTransactionDetails(true);
+        try {
+            service.update(transactionId, transaction);
+            showResponse("Transaction updated successfully");
+        } catch (IllegalArgumentException ex) {
+            showResponse(ex.getMessage());
+        }
+    }
+
     private void deleteTransaction() {
 
-        String transactionId = getInput(scanner, "Please provide transaction id to delete");
+        String transactionId = getInput(scanner, "Please provide transaction id to delete", true);
+        if (transactionId.isBlank()) return;
+
         if (service.getById(transactionId) == null)
             showResponse("Transaction not found with ID: " + transactionId);
         else {
@@ -154,7 +185,7 @@ public class AppRunner {
                 I really appreciate you trying it out.
                 First things first - what's your name?""";
 
-        String name = getInput(scanner, greetingText);
+        String name = getInput(scanner, greetingText, false);
         name = name.substring(0, 1).toUpperCase() + name.substring(1).toLowerCase();
         String welcomeText = """
                 Nice to meet you, Mr.%s! \s
