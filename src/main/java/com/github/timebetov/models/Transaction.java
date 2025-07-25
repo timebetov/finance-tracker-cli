@@ -24,14 +24,18 @@ public class Transaction implements Comparable<Transaction> {
     private BigDecimal amount;
     private String description;
     private Instant transactionTime;
+    private boolean isDeleted;
 
     public Transaction(TransactionType type, Category category, BigDecimal amount, String description, Instant transactionTime) {
         this.id = UUID.randomUUID();
         this.type = type;
         this.category = category;
-        this.amount = amount.setScale(2, RoundingMode.HALF_UP);
+        this.amount = amount;
+        if (amount != null)
+            this.amount = this.amount.setScale(2, RoundingMode.HALF_UP);
         this.description = description;
         this.transactionTime = transactionTime;
+        this.isDeleted = false;
     }
 
     @Override
@@ -53,7 +57,7 @@ public class Transaction implements Comparable<Transaction> {
     @Override
     public String toString() {
         return String.format(
-                "| %-36s | %-7s | %10s | %-13s | %-20s | %s |",
+                AppConstant.DISPLAY_FORMAT,
                 id,
                 type,
                 amount,

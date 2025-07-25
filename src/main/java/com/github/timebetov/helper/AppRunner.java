@@ -22,10 +22,12 @@ public class AppRunner {
     private final List<String> menuItems = List.of(
             "ADD | Add a new transaction",
             "SHOW | Show all transactions",
+            "GET | Get transaction by ID",
             "UPDATE | Update transaction by ID",
             "DELETE | Delete transaction by ID",
             "BALANCE | View current Balance",
             "SUMMARY | Get full summary report",
+            "TRASH | Get all deleted transactions",
             "EXIT | Close application"
     );
 
@@ -47,11 +49,13 @@ public class AppRunner {
     private void action(String input) {
         switch (input.toUpperCase()) {
             case "ADD" -> addTransaction();
-            case "SHOW" -> showTransactions();
+            case "SHOW" -> showTransactions(false);
+            case "GET" -> getTransaction();
             case "UPDATE" -> updateTransaction();
             case "DELETE" -> deleteTransaction();
-            case "SUMMARY" -> showTransactionSummary();
             case "BALANCE" -> getBalance();
+            case "SUMMARY" -> showTransactionSummary();
+            case "TRASH" -> showTransactions(true);
             case "MENU" -> showMenu();
             default -> System.out.println("Please choose right choice");
         }
@@ -69,17 +73,12 @@ public class AppRunner {
         String time = getInput(scanner, "Please provide transaction time in format: " +
                 LocalDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()).format(AppConstant.TIME_FORMAT), allowBlank);
 
-        try {
-            var validType = TransactionValidator.isValidType(type);
-            var validCat = TransactionValidator.isValidCategory(category);
-            var validAmount = TransactionValidator.isValidAmount(amount);
-            var validTime = TransactionValidator.isValidTime(time);
+        var validType = TransactionValidator.isValidType(type);
+        var validCat = TransactionValidator.isValidCategory(category);
+        var validAmount = TransactionValidator.isValidAmount(amount);
+        var validTime = TransactionValidator.isValidTime(time);
 
-            return new Transaction(validType, validCat, validAmount, description, validTime);
-        } catch (RuntimeException ex) {
-            showResponse(ex.getMessage());
-            return null;
-        }
+        return new Transaction(validType, validCat, validAmount, description, validTime);
     }
 
     private void addTransaction() {
@@ -91,13 +90,83 @@ public class AppRunner {
         }
 
         service.add(transaction);
-        showResponse("Transaction added successfully");
+        showResponse("Transaction with ID: " + transaction.getId() + " added successfully");
     }
 
-    private void showTransactions() {
+    private void showTransactions(boolean isDeleted) {
 
-        final List<Transaction> transactions = service.getTransactions();
-        final String displayFormat = "| %-5s | %-36s | %-7s | %10s | %-13s | %-20s | %-20s |";
+        final List<Transaction> transactions = service.getTransactions(isDeleted);
+        displayTransactions(transactions);
+    }
+
+    private void getTransaction() {
+
+        String transactionId = getInput(scanner, "Pleas provide transaction id you want to view", true);
+        if (transactionId.isBlank()) return;
+
+        try {
+            Transaction transaction = service.getById(transactionId);
+            displayTransactions(List.of(transaction));
+        } catch (Exception e) {
+            showResponse(e.getMessage());
+        }
+    }
+
+    private void updateTransaction() {
+
+        String transactionId = getInput(scanner, "Please provide transaction id you want to update", true);
+        if (transactionId.isBlank()) return;
+
+        try {
+            service.getById(transactionId);
+            Transaction transaction = getTransactionDetails(true);
+            if (transaction == null) {
+                showResponse("Some issues occurred. Please provide valid data.");
+                return;
+            }
+            service.update(transactionId, transaction);
+            showResponse("Transaction updated successfully");
+        } catch (IllegalArgumentException ex) {
+            showResponse(ex.getMessage());
+        }
+    }
+
+    private void deleteTransaction() {
+
+        String transactionId = getInput(scanner, "Please provide transaction id to delete", true);
+        if (transactionId.isBlank()) return;
+
+        try {
+            service.getById(transactionId);
+            service.delete(transactionId);
+            showResponse("Transaction deleted successfully");
+        } catch (IllegalArgumentException ex) {
+            showResponse(ex.getMessage());
+        }
+    }
+
+    private void showTransactionSummary() {
+
+        Map<String, String> summary = service.getSummary(service.getTransactions(false));
+        System.out.println("\n📊 Summary Report");
+        System.out.println("‒".repeat(61));
+        String format = "| %-30s | %-25s |%n";
+        System.out.printf(format, "Metric", "Value");
+        System.out.println("‒".repeat(61));
+        summary.forEach((key, value) -> System.out.printf(format, key, value));
+        System.out.println("‒".repeat(61));
+    }
+
+    private void getBalance() {
+
+        BigDecimal balance = service.getBalance(service.getTransactions(false));
+        String sign = balance.signum() >= 0 ? "" : "-";
+        showResponse("BALANCE: " + sign + "$" + balance.abs());
+    }
+
+    private void displayTransactions(List<Transaction> transactions) {
+
+        final String displayFormat = "| %-5s " + AppConstant.DISPLAY_FORMAT;
 
         // Case: If there are no transactions
         if (transactions.isEmpty()) {
@@ -118,52 +187,6 @@ public class AppRunner {
         System.out.println("‒".repeat(135));
     }
 
-    private void updateTransaction() {
-
-        String transactionId = getInput(scanner, "Please provide transaction id you want to update", true);
-        if (transactionId.isBlank()) return;
-
-        Transaction transaction = getTransactionDetails(true);
-        try {
-            service.update(transactionId, transaction);
-            showResponse("Transaction updated successfully");
-        } catch (IllegalArgumentException ex) {
-            showResponse(ex.getMessage());
-        }
-    }
-
-    private void deleteTransaction() {
-
-        String transactionId = getInput(scanner, "Please provide transaction id to delete", true);
-        if (transactionId.isBlank()) return;
-
-        if (service.getById(transactionId) == null)
-            showResponse("Transaction not found with ID: " + transactionId);
-        else {
-            service.delete(transactionId);
-            showResponse("Transaction deleted successfully");
-        }
-    }
-
-    private void showTransactionSummary() {
-
-        Map<String, String> summary = service.getSummary();
-        System.out.println("\n📊 Summary Report");
-        System.out.println("‒".repeat(61));
-        String format = "| %-30s | %-25s |%n";
-        System.out.printf(format, "Metric", "Value");
-        System.out.println("‒".repeat(61));
-        summary.forEach((key, value) -> System.out.printf(format, key, value));
-        System.out.println("‒".repeat(61));
-    }
-
-    private void getBalance() {
-
-        BigDecimal balance = service.getBalance();
-        String sign = balance.signum() >= 0 ? "" : "-";
-        showResponse("BALANCE: " + sign + "$" + balance.abs());
-    }
-
     private void showMenu() {
 
         System.out.println("‒".repeat(30));
@@ -178,19 +201,14 @@ public class AppRunner {
         System.out.println("‒".repeat(30));
     }
 
-    private String greeting() {
+    private void greeting() {
 
         String greetingText = """
                 Hey! Welcome to `MoneyWise` — your personal finance tracker by Timebetov.
                 I really appreciate you trying it out.
-                First things first - what's your name?""";
-
-        String name = getInput(scanner, greetingText, false);
-        name = name.substring(0, 1).toUpperCase() + name.substring(1).toLowerCase();
-        String welcomeText = """
-                Nice to meet you, Mr.%s! \s
+                Mr.%s
                 Here you can easily manage all your transactions.%n""";
-        System.out.printf(welcomeText, name);
-        return name;
+
+        System.out.printf(greetingText, service.getUsername());
     }
 }
