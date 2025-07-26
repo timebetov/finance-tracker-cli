@@ -62,6 +62,16 @@ public class InMemoryTransactionService implements TransactionService {
     }
 
     @Override
+    public void clear(boolean clearAll) {
+
+        if (clearAll)
+            transactions.clear();
+        else {
+            transactions.values().removeIf(Transaction::isDeleted);
+        }
+    }
+
+    @Override
     public Transaction getById(String transactionId) {
 
         UUID id = UUID.fromString(transactionId);

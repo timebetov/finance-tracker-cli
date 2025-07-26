@@ -10,7 +10,6 @@ import java.time.LocalDateTime;
 public class App {
 
     // FIXME: Refactor InMemoryTransactionService Implementation
-    // FIXME: Fix update method in InFilesTransactionService Implementation
 
     public static void main(String[] args) {
 

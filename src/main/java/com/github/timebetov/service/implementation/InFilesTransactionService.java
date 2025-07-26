@@ -62,9 +62,10 @@ public class InFilesTransactionService implements TransactionService {
                 RandomAccessFile da = new RandomAccessFile(dataPath.toString(), "rw");
                 RandomAccessFile ia = new RandomAccessFile(idxPath.toString(), "rw")
         ) {
-            long pos = writeTransaction(da, transaction, da.length());
-            indexedUUIDs.put(transaction.getId(), pos);
-            writeIndex(ia, transaction.getId(), pos);
+            long position = da.length();
+            writeTransaction(da, transaction);
+            indexedUUIDs.put(transaction.getId(), position);
+            writeIndex(ia, transaction.getId(), position);
             this.transactions.add(transaction);
         } catch (IOException e) {
             throw new RuntimeException(e);
@@ -81,14 +82,9 @@ public class InFilesTransactionService implements TransactionService {
     @Override
     public void update(String transactionId, Transaction transaction) {
 
-        // FIXME: Update description does not work as expected cause size of String
-        // SOLUTION:
-        // STEP 1: Add it like a new record in file
-        // STEP 2: Mark it as deleted or updated and not to load
-        // STEP 3: Refresh indexes
-
         Transaction update = getById(transactionId);
-        try (RandomAccessFile ra = new RandomAccessFile(dataPath.toString(), "rw")) {
+        try (RandomAccessFile da = new RandomAccessFile(dataPath.toString(), "rw");
+             RandomAccessFile ia = new RandomAccessFile(idxPath.toString(), "rw")) {
 
             if (transaction.getType() != null)
                 update.setType(transaction.getType());
@@ -101,8 +97,19 @@ public class InFilesTransactionService implements TransactionService {
             if (transaction.getTransactionTime() != null)
                 update.setTransactionTime(transaction.getTransactionTime());
 
-            long position = indexedUUIDs.get(UUID.fromString(transactionId));
-            writeTransaction(ra, update, position);
+            long oldPosition = indexedUUIDs.get(update.getId());
+
+            // STEP 1: Mark old transaction as deleted
+            da.seek(oldPosition);
+            da.writeBoolean(true);
+
+            // STEP 2: Add it like a new record in file
+            long newPosition = da.length();
+            writeTransaction(da, update);
+
+            // STEP 3: Refresh indexes
+            indexedUUIDs.put(update.getId(), newPosition);
+            overwriteIndex(ia);
         } catch (IOException ex) {
             throw new RuntimeException(ex);
         }
@@ -128,6 +135,34 @@ public class InFilesTransactionService implements TransactionService {
     }
 
     @Override
+    public void clear(boolean clearAll) {
+
+        try {
+            Files.deleteIfExists(idxPath);
+            Files.deleteIfExists(dataPath);
+
+            Files.createFile(idxPath);
+            Files.createFile(dataPath);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        List<Transaction> remainingTransactions = transactions.stream()
+                .filter(t -> !t.isDeleted())
+                .toList();
+
+        transactions.clear();
+        indexedUUIDs.clear();
+
+        if (clearAll) {
+            return;
+        }
+
+        // Clearing only trash >> Saving remaining items marked as NOT deleted
+        remainingTransactions.forEach(this::add);
+    }
+
+    @Override
     public Transaction getById(String transactionId) {
 
         UUID id = UUID.fromString(transactionId);
@@ -138,11 +173,10 @@ public class InFilesTransactionService implements TransactionService {
                 .orElseThrow(() -> new IllegalArgumentException("Transaction with ID: " + transactionId + " not found"));
     }
 
-    private long writeTransaction(RandomAccessFile ra, Transaction data, long position) throws IOException {
+    private void writeTransaction(RandomAccessFile ra, Transaction data) throws IOException {
 
         // Pointer: End of the file
-        ra.seek(position);
-        long positionInFile = ra.getFilePointer();
+        ra.seek(ra.length());
 
         // Serializing & Writing actual data
         ra.writeBoolean(data.isDeleted());                          // boolean writes 1 byte
@@ -158,8 +192,6 @@ public class InFilesTransactionService implements TransactionService {
 
         ra.writeUTF(data.getDescription());                         // Description
         ra.writeLong(data.getTransactionTime().toEpochMilli());     // Timestamp UTC
-
-        return positionInFile;
     }
 
     private void writeIndex(RandomAccessFile ra, UUID transactionId, long lastDataPosition) throws IOException {
@@ -168,11 +200,25 @@ public class InFilesTransactionService implements TransactionService {
         ra.seek(0);
         ra.writeInt(indexedUUIDs.size());
 
-        ra.seek(ra.length());                                       // Moving pointer to end of Indexes
+        ra.seek(ra.length());
+        addIndex(ra, transactionId, lastDataPosition);
+    }
+
+    private void addIndex(RandomAccessFile ra, UUID transactionId, long lastDataPosition) throws IOException {
 
         ra.writeLong(transactionId.getMostSignificantBits());       // writing UUID.mostSignificantBits as Long
         ra.writeLong(transactionId.getLeastSignificantBits());      // writing UUID.leastSignificantBits as Long
         ra.writeLong(lastDataPosition);                             // writing position in file as Long
+    }
+
+    private void overwriteIndex(RandomAccessFile ra) throws IOException {
+
+        ra.setLength(0);
+        ra.seek(0);
+        ra.writeInt(indexedUUIDs.size());
+        for (var entry : indexedUUIDs.entrySet()) {
+            addIndex(ra, entry.getKey(), entry.getValue());
+        }
     }
 
     private Transaction readTransaction(RandomAccessFile ra, UUID id) throws IOException {
@@ -214,11 +260,10 @@ public class InFilesTransactionService implements TransactionService {
 
                 long most = ra.readLong();
                 long least = ra.readLong();
-                long positionInFile = ra.readLong();
+                long pos = ra.readLong();
 
                 UUID key = new UUID(most, least);
-                indexedUUIDs.put(key, positionInFile);
-                System.out.println("\tINDEX LOADED SUCCESS >>> KEY >>> " + key + " Position >>> " + positionInFile);
+                indexedUUIDs.put(key, pos);
             }
         } catch (IOException ex) {
             throw new RuntimeException("Something went wrong when loading indexes: " + ex.getMessage());

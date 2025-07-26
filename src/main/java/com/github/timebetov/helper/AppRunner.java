@@ -28,6 +28,8 @@ public class AppRunner {
             "BALANCE | View current Balance",
             "SUMMARY | Get full summary report",
             "TRASH | Get all deleted transactions",
+            "CLEAR-A | Clear all transactions",
+            "CLEAR-T | Clear all trash",
             "EXIT | Close application"
     );
 
@@ -56,6 +58,8 @@ public class AppRunner {
             case "BALANCE" -> getBalance();
             case "SUMMARY" -> showTransactionSummary();
             case "TRASH" -> showTransactions(true);
+            case "CLEAR-A" -> clear(true);
+            case "CLEAR-T" -> clear(false);
             case "MENU" -> showMenu();
             default -> System.out.println("Please choose right choice");
         }
@@ -162,6 +166,11 @@ public class AppRunner {
         BigDecimal balance = service.getBalance(service.getTransactions(false));
         String sign = balance.signum() >= 0 ? "" : "-";
         showResponse("BALANCE: " + sign + "$" + balance.abs());
+    }
+
+    private void clear(boolean all) {
+
+        service.clear(all);
     }
 
     private void displayTransactions(List<Transaction> transactions) {

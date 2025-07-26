@@ -11,11 +11,13 @@ import java.util.*;
 public interface TransactionService {
 
     String getUsername();
+
     void add(Transaction transaction);
     List<Transaction> getTransactions(boolean isDeleted);
+    Transaction getById(String transactionId);
     void update(String transactionId, Transaction transaction);
     void delete(String transactionId);
-    Transaction getById(String transactionId);
+    void clear(boolean clearAll);
 
     default BigDecimal getBalance(List<Transaction> transactions) {
         return transactions.stream()
