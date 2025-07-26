@@ -77,24 +77,27 @@ public class AppRunner {
         String time = getInput(scanner, "Please provide transaction time in format: " +
                 LocalDateTime.ofInstant(Instant.now(), ZoneId.systemDefault()).format(AppConstant.TIME_FORMAT), allowBlank);
 
-        var validType = TransactionValidator.isValidType(type);
-        var validCat = TransactionValidator.isValidCategory(category);
-        var validAmount = TransactionValidator.isValidAmount(amount);
-        var validTime = TransactionValidator.isValidTime(time);
-
-        return new Transaction(validType, validCat, validAmount, description, validTime);
+        try {
+            var validType = TransactionValidator.isValidType(type);
+            var validCat = TransactionValidator.isValidCategory(category);
+            var validAmount = TransactionValidator.isValidAmount(amount);
+            var validTime = TransactionValidator.isValidTime(time);
+            return new Transaction(validType, validCat, validAmount, description, validTime);
+        } catch (Exception ex) {
+            throw new RuntimeException(ex.getMessage());
+        }
     }
 
     private void addTransaction() {
 
-        Transaction transaction = getTransactionDetails(false);
-        if (transaction == null) {
-            showResponse("Transaction NOT ADDED");
-            return;
+        try {
+            Transaction transaction = getTransactionDetails(false);
+            service.add(transaction);
+            showResponse("Transaction with ID: " + transaction.getId() + " added successfully");
+        } catch (Exception e) {
+            showResponse("Transaction NOT ADDED Because of: " + e.getMessage());
         }
 
-        service.add(transaction);
-        showResponse("Transaction with ID: " + transaction.getId() + " added successfully");
     }
 
     private void showTransactions(boolean isDeleted) {
@@ -124,14 +127,10 @@ public class AppRunner {
         try {
             service.getById(transactionId);
             Transaction transaction = getTransactionDetails(true);
-            if (transaction == null) {
-                showResponse("Some issues occurred. Please provide valid data.");
-                return;
-            }
             service.update(transactionId, transaction);
             showResponse("Transaction updated successfully");
         } catch (IllegalArgumentException ex) {
-            showResponse(ex.getMessage());
+            showResponse("Transaction not updated because of: " + ex.getMessage());
         }
     }
 
@@ -145,7 +144,7 @@ public class AppRunner {
             service.delete(transactionId);
             showResponse("Transaction deleted successfully");
         } catch (IllegalArgumentException ex) {
-            showResponse(ex.getMessage());
+            showResponse("Transaction not deleted because of: " + ex.getMessage());
         }
     }
 

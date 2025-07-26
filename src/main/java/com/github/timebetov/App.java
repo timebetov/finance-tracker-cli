@@ -6,11 +6,13 @@ import com.github.timebetov.service.TransactionService;
 import com.github.timebetov.service.implementation.InFilesTransactionService;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 public class App {
 
     public static void main(String[] args) {
 
+        System.out.println(UUID.randomUUID());
         String username = getUsername(args);
         TransactionService service = new InFilesTransactionService(username);
         new AppRunner(service).start();
