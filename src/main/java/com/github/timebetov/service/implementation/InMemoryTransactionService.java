@@ -43,17 +43,7 @@ public class InMemoryTransactionService implements TransactionService {
     public void update(String transactionId, Transaction transaction) {
 
         Transaction toUpdate = getById(transactionId);
-
-        if (transaction.getType() != null)
-            toUpdate.setType(transaction.getType());
-        if (transaction.getCategory() != null)
-            toUpdate.setCategory(transaction.getCategory());
-        if (transaction.getDescription() != null && !(transaction.getDescription().isBlank()))
-            toUpdate.setDescription(transaction.getDescription());
-        if (transaction.getAmount() != null)
-            toUpdate.setAmount(transaction.getAmount());
-        if (transaction.getTransactionTime() != null)
-            toUpdate.setTransactionTime(transaction.getTransactionTime());
+        Transaction.updateTransaction(toUpdate, transaction);
     }
 
     @Override

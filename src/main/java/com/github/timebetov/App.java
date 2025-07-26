@@ -9,8 +9,6 @@ import java.time.LocalDateTime;
 
 public class App {
 
-    // FIXME: Refactor InMemoryTransactionService Implementation
-
     public static void main(String[] args) {
 
         String username = getUsername(args);

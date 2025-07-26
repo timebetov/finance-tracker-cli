@@ -86,16 +86,7 @@ public class InFilesTransactionService implements TransactionService {
         try (RandomAccessFile da = new RandomAccessFile(dataPath.toString(), "rw");
              RandomAccessFile ia = new RandomAccessFile(idxPath.toString(), "rw")) {
 
-            if (transaction.getType() != null)
-                update.setType(transaction.getType());
-            if (transaction.getCategory() != null)
-                update.setCategory(transaction.getCategory());
-            if (transaction.getAmount() != null)
-                update.setAmount(transaction.getAmount());
-            if (transaction.getDescription() != null)
-                update.setDescription(transaction.getDescription());
-            if (transaction.getTransactionTime() != null)
-                update.setTransactionTime(transaction.getTransactionTime());
+            Transaction.updateTransaction(update, transaction);
 
             long oldPosition = indexedUUIDs.get(update.getId());
 

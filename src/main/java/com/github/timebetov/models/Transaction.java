@@ -38,6 +38,21 @@ public class Transaction implements Comparable<Transaction> {
         this.isDeleted = false;
     }
 
+    public static void updateTransaction(Transaction initial, Transaction transaction) {
+
+        // Like a mapper
+        if (transaction.getType() != null)
+            initial.setType(transaction.getType());
+        if (transaction.getCategory() != null)
+            initial.setCategory(transaction.getCategory());
+        if (transaction.getDescription() != null && !(transaction.getDescription().isBlank()))
+            initial.setDescription(transaction.getDescription());
+        if (transaction.getAmount() != null)
+            initial.setAmount(transaction.getAmount());
+        if (transaction.getTransactionTime() != null)
+            initial.setTransactionTime(transaction.getTransactionTime());
+    }
+
     @Override
     public int compareTo(Transaction o) {
         return transactionTime.compareTo(o.transactionTime);
